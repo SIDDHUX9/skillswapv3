@@ -6,13 +6,8 @@
   "env": {
     "DATABASE_URL": "file:./dev.db",
     "NEXTAUTH_SECRET": "placeholder-nextauth-secret",
-    "NEXTAUTH_URL": "https://example.vercel.app",
-    "NEXT_PUBLIC_APP_URL": "https://example.vercel.app"
-  },
-  "functions": {
-    "src/app/api/**/*.ts": {
-      "runtime": "nodejs18.x"
-    }
+    "NEXTAUTH_URL": "https://example.com",
+    "NEXT_PUBLIC_APP_URL": "https://example.com"
   },
   "headers": [
     {

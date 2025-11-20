@@ -1,30 +1,53 @@
-import { createClient } from '@supabase/supabase-js'
+// lib/supabase.ts
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.SUPABASE_URL
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY
+/**
+ * Read envs once
+ */
+const supabaseUrl = process.env.SUPABASE_URL ?? null
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY ?? null
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY ?? null
 
-// Validate environment variables
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing required Supabase environment variables. Please check SUPABASE_URL and SUPABASE_ANON_KEY.')
+/**
+ * Do NOT throw here — return null if not configured.
+ * Create clients lazily and reuse them (avoid multiple instances).
+ */
+let _supabase: SupabaseClient | null = null
+let _supabaseAdmin: SupabaseClient | null = null
+
+export function getSupabase(): SupabaseClient | null {
+  if (!supabaseUrl || !supabaseAnonKey) return null
+  if (!_supabase) {
+    _supabase = createClient(supabaseUrl, supabaseAnonKey)
+  }
+  return _supabase
 }
 
-// Client for browser-side operations
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-// Client for server-side operations (with elevated privileges)
-export const supabaseAdmin = createClient(
-  supabaseUrl!,
-  supabaseServiceKey!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
+export function getSupabaseAdmin(): SupabaseClient | null {
+  if (!supabaseUrl || !supabaseServiceKey) return null
+  if (!_supabaseAdmin) {
+    _supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    })
   }
-)
+  return _supabaseAdmin
+}
 
-// Database types
+/**
+ * Backwards-compatible exports:
+ * - `supabase` and `supabaseAdmin` may be null when envs are missing.
+ * - Prefer using getSupabase() / getSupabaseAdmin() in request handlers.
+ */
+export const supabase = getSupabase()
+export const supabaseAdmin = getSupabaseAdmin()
+
+/* ======================================================================
+   Database types (keep unchanged from your original file)
+   ====================================================================== */
+
 export interface Database {
   public: {
     Tables: {

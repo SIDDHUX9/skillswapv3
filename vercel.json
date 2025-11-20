@@ -4,10 +4,10 @@
   "installCommand": "npm install",
   "framework": "nextjs",
   "env": {
-    "DATABASE_URL": "@database-url",
-    "NEXTAUTH_SECRET": "@nextauth-secret",
-    "NEXTAUTH_URL": "@nextauth-url",
-    "NEXT_PUBLIC_APP_URL": "@app-url"
+    "DATABASE_URL": "file:./dev.db",
+    "NEXTAUTH_SECRET": "placeholder-nextauth-secret",
+    "NEXTAUTH_URL": "https://example.vercel.app",
+    "NEXT_PUBLIC_APP_URL": "https://example.vercel.app"
   },
   "functions": {
     "src/app/api/**/*.ts": {

@@ -1,0 +1,292 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  password        String
+  name            String?
+  avatar          String?  @default("https://api.dicebear.com/7.x/avataaars/svg?seed=Felix")
+  isIdVerified    Boolean  @default(false)
+  karma           Int      @default(0)
+  credits         Int      @default(100) // Start with 100 credits
+  language        String   @default("en")
+  location        String?
+  lat             Float?
+  lng             Float?
+  bio             String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  ownedSkills     Skill[]           @relation("UserSkills")
+  bookingsAsLearner Booking[]
+  reviews         Review[]
+  creditTxns      CreditTxn[]
+  communityProjects CommunityProject[]
+  projectVolunteers ProjectVolunteer[]
+  testimonialsGiven  Testimonial[] @relation("TestimonialGiver")
+  testimonialsReceived Testimonial[] @relation("TestimonialReceiver")
+  endorsementsGiven  Endorsement[] @relation("EndorsementGiver")
+  endorsementsReceived Endorsement[] @relation("EndorsementReceiver")
+  sentMessages    Message[]        @relation("MessageSender")
+  chatRooms1      ChatRoom[]       @relation("ChatRoomParticipant1")
+  chatRooms2      ChatRoom[]       @relation("ChatRoomParticipant2")
+  reputation      Reputation?
+}
+
+model Skill {
+  id          String      @id @default(cuid())
+  ownerId     String
+  title       String
+  description String
+  category    SkillCategory
+  priceCredits Int
+  lat         Float
+  lng         Float
+  avgRating   Float       @default(0)
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  // Relations
+  owner       User        @relation("UserSkills", fields: [ownerId], references: [id], onDelete: Cascade)
+  bookings    Booking[]
+  reviews     Review[]
+  endorsements Endorsement[]
+  calLink     CalLink?
+  chatRooms   ChatRoom[]
+}
+
+model Booking {
+  id         String       @id @default(cuid())
+  skillId    String
+  learnerId  String
+  startTime  DateTime
+  endTime    DateTime
+  status     BookingStatus @default(BOOKED)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  
+  // Relations
+  skill      Skill        @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  learner    User         @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  reviews    Review[]
+  chatRoom   ChatRoom?
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  skillId   String
+  reviewerId String
+  bookingId String
+  stars     Int
+  comment   String?
+  isFlagged Boolean  @default(false)
+  createdAt DateTime @default(now())
+  
+  // Relations
+  skill     Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  reviewer  User     @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  
+  @@unique([skillId, reviewerId])
+}
+
+model CommunityProject {
+  id               String   @id @default(cuid())
+  creatorId        String
+  title            String
+  description      String
+  maxVolunteers    Int
+  currentVolunteers Int     @default(0)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  // Relations
+  creator          User     @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  volunteers       ProjectVolunteer[]
+}
+
+model CreditTxn {
+  id        String       @id @default(cuid())
+  userId    String
+  amount    Int
+  type      CreditType
+  refId     String?      // Reference to booking, review, etc.
+  message   String?
+  createdAt DateTime     @default(now())
+  
+  // Relations
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CalLink {
+  id         String @id @default(cuid())
+  skillId    String @unique
+  calComSlug String
+  
+  // Relations
+  skill      Skill  @relation(fields: [skillId], references: [id], onDelete: Cascade)
+}
+
+model ChatRoom {
+  id            String   @id @default(cuid())
+  participant1Id String
+  participant2Id String
+  bookingId     String?  @unique
+  skillId       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relations
+  participant1  User     @relation("ChatRoomParticipant1", fields: [participant1Id], references: [id], onDelete: Cascade)
+  participant2  User     @relation("ChatRoomParticipant2", fields: [participant2Id], references: [id], onDelete: Cascade)
+  booking       Booking? @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  skill         Skill?   @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  messages      Message[]
+  
+  @@unique([participant1Id, participant2Id])
+}
+
+model Message {
+  id          String     @id @default(cuid())
+  roomId      String
+  senderId    String
+  receiverId  String
+  senderName  String
+  content     String
+  type        MessageType @default(TEXT)
+  status      MessageStatus @default(SENT)
+  timestamp   DateTime   @default(now())
+  bookingId   String?
+  skillId     String?
+  
+  // Relations
+  room        ChatRoom   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  sender      User       @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+}
+
+model ProjectVolunteer {
+  id                String   @id @default(cuid())
+  projectId         String
+  userId            String
+  joinedAt          DateTime @default(now())
+  
+  // Relations
+  project           CommunityProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([projectId, userId])
+}
+
+model Reputation {
+  id              String @id @default(cuid())
+  userId          String @unique
+  overallRating   Float  @default(0)
+  totalReviews    Int    @default(0)
+  reliabilityScore Float @default(0)
+  skillScore      Float  @default(0)
+  communicationScore Float @default(0)
+  responseRate    Float  @default(0)
+  responseTime    Int    @default(0) // in minutes
+  level           ReputationLevel @default(BEGINNER)
+  badges          String // JSON string of badges
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  user            User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  testimonials    Testimonial[]
+}
+
+model Testimonial {
+  id            String   @id @default(cuid())
+  giverId       String
+  receiverId    String
+  reputationId  String
+  content       String
+  rating        Int
+  isPublic      Boolean  @default(true)
+  isVerified    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  
+  // Relations
+  reputation    Reputation @relation(fields: [reputationId], references: [id], onDelete: Cascade)
+  giver         User       @relation("TestimonialGiver", fields: [giverId], references: [id], onDelete: Cascade)
+  receiver      User       @relation("TestimonialReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+}
+
+model Endorsement {
+  id            String   @id @default(cuid())
+  endorserId    String
+  endorsedId    String
+  skillId       String
+  comment       String?
+  createdAt     DateTime @default(now())
+  
+  // Relations
+  endorser      User     @relation("EndorsementGiver", fields: [endorserId], references: [id], onDelete: Cascade)
+  endorsed      User     @relation("EndorsementReceiver", fields: [endorsedId], references: [id], onDelete: Cascade)
+  skill         Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  
+  @@unique([endorserId, skillId])
+}
+
+enum SkillCategory {
+  ACADEMIC
+  ARTS
+  BUSINESS
+  COOKING
+  FITNESS
+  LANGUAGE
+  MUSIC
+  TECH
+  TRADES
+  OTHER
+}
+
+enum BookingStatus {
+  BOOKED
+  COMPLETED
+  CANCELLED
+}
+
+enum CreditType {
+  EARNED
+  SPENT
+  DONATED
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+}
+
+enum ReputationLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+  MASTER
+}
